@@ -13,6 +13,7 @@ public enum MessageTypeEnum {
      */
     System("系统消息"),
     User("用户消息"),
+    AI("AI消息")
     ;
 
     MessageTypeEnum(String desc) {

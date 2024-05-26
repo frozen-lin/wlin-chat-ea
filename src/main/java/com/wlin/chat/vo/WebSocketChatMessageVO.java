@@ -13,5 +13,6 @@ import lombok.Data;
 @Data
 public class WebSocketChatMessageVO {
     private MessageTypeEnum messageType;
+    private String fromUserId;
     private String message;
 }

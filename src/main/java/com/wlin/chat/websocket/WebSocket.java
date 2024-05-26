@@ -1,14 +1,20 @@
 
 package com.wlin.chat.websocket;
 
+import com.wlin.chat.handler.WebSocketMessageHandler;
+import com.wlin.chat.handler.WebSocketMessageHandlerService;
+import com.wlin.chat.kit.ApplicationContextHolder;
 import com.wlin.chat.kit.JSONKit;
 import com.wlin.chat.model.WebSocketReceiveMessage;
+import com.wlin.chat.vo.WebSocketChatMessageVO;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javax.websocket.*;
 import javax.websocket.server.PathParam;
 import javax.websocket.server.ServerEndpoint;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
@@ -27,9 +33,9 @@ public class WebSocket {
     //concurrent包的线程安全Set，用来存放每个客户端对应的MyWebSocket对象。
     //虽然@Component默认是单例模式的，但springboot还是会为每个websocket连接初始化一个bean，所以可以用一个静态set保存起来。
     //  注：底下WebSocket是当前类名
-    private static CopyOnWriteArraySet<WebSocket> webSockets =new CopyOnWriteArraySet<>();
+    public static CopyOnWriteArraySet<WebSocket> webSockets =new CopyOnWriteArraySet<>();
     // 用来存在线连接用户信息
-    private static ConcurrentHashMap<String,Session> sessionPool = new ConcurrentHashMap<>();
+    public static ConcurrentHashMap<String,Session> sessionPool = new ConcurrentHashMap<>();
     
     /**
      * 链接成功调用的方法
@@ -42,6 +48,8 @@ public class WebSocket {
 			webSockets.add(this);
 			sessionPool.put(userId, session);
 			log.info("【websocket消息】有新的连接，总数为:"+webSockets.size());
+            WebSocketMessageHandlerService webSocketMessageHandlerService = ApplicationContextHolder.applicationContext.getBean(WebSocketMessageHandlerService.class);
+            webSocketMessageHandlerService.onOpen(userId);
 		} catch (Exception e) {
             log.error("连接出错了,原因:", e);
         }
@@ -72,6 +80,9 @@ public class WebSocket {
     public void onMessage(String message) {
     	log.info("【websocket消息】收到客户端消息:"+message);
         WebSocketReceiveMessage webSocketReceiveMessage = JSONKit.jsonToBean(message, WebSocketReceiveMessage.class);
+        webSocketReceiveMessage.setFromUserId(userId);
+        WebSocketMessageHandlerService webSocketMessageHandlerService = ApplicationContextHolder.applicationContext.getBean(WebSocketMessageHandlerService.class);
+        webSocketMessageHandlerService.onMessageHandle(webSocketReceiveMessage);
 
     }
     
@@ -86,8 +97,9 @@ public class WebSocket {
 
     
     // 此为广播消息
-    public void sendAllMessage(String message) {
-    	log.info("【websocket消息】广播消息:"+message);
+    public static void sendAllMessage(WebSocketChatMessageVO webSocketChatMessageVO) {
+        String message = JSONKit.toJsonString(webSocketChatMessageVO);
+        log.info("【websocket消息】广播消息:"+message);
         for(WebSocket webSocket : webSockets) {
             try {
             	if(webSocket.session.isOpen()) {
@@ -100,7 +112,8 @@ public class WebSocket {
     }
     
     // 此为单点消息
-    public void sendOneMessage(String userId, String message) {
+    public static void sendOneMessage(String userId, WebSocketChatMessageVO webSocketChatMessageVO) {
+        String message = JSONKit.toJsonString(webSocketChatMessageVO);
         Session session = sessionPool.get(userId);
         if (session != null&&session.isOpen()) {
             try {
@@ -113,12 +126,14 @@ public class WebSocket {
     }
     
     // 此为单点消息(多人)
-    public void sendMoreMessage(String[] userIds, String message) {
+    public static void sendMoreMessage(String[] userIds, WebSocketChatMessageVO webSocketChatMessageVO) {
     	for(String userId:userIds) {
     		Session session = sessionPool.get(userId);
             if (session != null&&session.isOpen()) {
                 try {
+                    String message = JSONKit.toJsonString(webSocketChatMessageVO);
                 	log.info("【websocket消息】 单点消息:"+message);
+
                     session.getAsyncRemote().sendText(message);
                 } catch (Exception e) {
                     log.error("发送消息出错了,原因:", e);

@@ -12,5 +12,6 @@ import lombok.Data;
 @Data
 public class WebSocketReceiveMessage {
     private String messageType;
+    private String fromUserId;
     private String messageData;
 }

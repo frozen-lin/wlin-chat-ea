@@ -5,5 +5,5 @@ import com.wlin.chat.model.WebSocketReceiveMessage;
 public interface WebSocketMessageHandler {
     boolean supports(WebSocketReceiveMessage webSocketReceiveMessage);
 
-    void handleMessage();
+    void handleMessage(WebSocketReceiveMessage webSocketReceiveMessage);
 }

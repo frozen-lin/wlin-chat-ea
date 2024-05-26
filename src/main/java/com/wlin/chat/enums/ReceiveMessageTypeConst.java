@@ -11,5 +11,5 @@ public class ReceiveMessageTypeConst {
     /**
      * 双人聊天
      */
-    public static final String CHAT_FOR_TWO = "charForTwo";
+    public static final String Text = "text";
 }
